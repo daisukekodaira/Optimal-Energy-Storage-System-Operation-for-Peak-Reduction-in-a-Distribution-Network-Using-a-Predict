@@ -14,10 +14,9 @@ function [cost] = constraints(in)
     %Initialize the cost
     cost = 0;
     
-    %% Arrange cost function: %%%%%
+    %% Arrange constraints: %%%%%
     % 1. Start SOC meets end SOC
-    % 2. SOC violation
-    % 3. The number of Switching 
+    % 2. SOC violation is prohibited
     %%%%%%%%%%%%%%%%%%%%%
     
     % 1. Initial SOC meets end SOC: Check whether SOC is the same as at the start time
@@ -27,7 +26,7 @@ function [cost] = constraints(in)
             cost = cost + (10^8) + (10^2)*abs(g_currentSOC(m) - last_SOC);
         end
     end
-    % if constraint No.1 is violated, return cost
+    % if constraint No.1 is violated, return the cost
     if cost ~= 0                
         return;
     end
