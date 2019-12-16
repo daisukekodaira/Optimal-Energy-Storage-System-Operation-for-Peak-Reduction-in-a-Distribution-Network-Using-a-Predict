@@ -5,18 +5,18 @@ f3 = 'lowerCI.csv';
 f4 = 'obsrLoad.csv';
 f5 = 'probLoadPred.csv';
 
-g_predLoad = csvread(f1);   % Predicted Load
-g_upperCI = csvread(f2);   % Predicted Load
-g_lowerCI = csvread(f3);   % Predicted Load
-g_obsrLoad = csvread(f4); % Observed Load
-g_ProbPredLoad = csvread(f5);% Probabilistic Predicted Load
+g_predLoad = csvread(f1);       % Predicted Load
+g_upperCI = csvread(f2);         % Predicted upper boundary
+g_lowerCI = csvread(f3);          % Predicted lower boundary
+g_obsrLoad = csvread(f4);        % actual Load (observed load) without ESS operation
+g_ProbPredLoad = csvread(f5);  % Probabilistic Predicted Load
 
 %% Paramters & Flags
-g_days = size(g_predLoad,2);   % how many days compose the one group(class)
-g_steps = size(g_predLoad,1);  % how many time steps in a day : e.x) 2min data =720, 15min data = 96
+g_days = size(g_predLoad,2);   % how many days we define the ESS schedules for
+g_steps = size(g_predLoad,1);  % how many time steps in a day : e.x) 2min data =720steps, 15min data = 96steps
 g_s_period = 24; % schedule period , e.g.) 24 hour ahead schedule(t = 24) requires 24 unknown variables to be optimized
-g_PSC_capacity =[3 3];% [0.75 1]; %[3 3];
-g_line_capacity = 2.5;   % Around 10 is appropriate for real data. Interval must be 0.5 such as 9.5, 10.0 or 10.5. I will make it flexible later.
+g_PSC_capacity =[3 3];% power limitation %[3 3];
+g_line_capacity = 2.5;   % Around 10MWh is appropriate for real data. Interval must be 0.5 such as 9.5, 10.0 or 10.5. I will make it flexible later.
 g_ESS_capacity = [5 5]; %[1.5 2]; %[5 5];
 g_margin = g_ESS_capacity*0.02; % 5% margin for last SOC in a day
 g_SOC_limit_lower = g_ESS_capacity*0.15;
