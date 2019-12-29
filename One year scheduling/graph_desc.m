@@ -83,10 +83,6 @@ function plt(f, y, i, times_num)  % f = fig
     else
         yyaxis right;
     end
-%     % ??
-%     if size(y(i).data,1)  ~= size(times_num,1)
-%          times_num(end) = [];
-%     end
     % Plot lines
     p = plot(times_num, y(i).data,'LineWidth',1);
     L = legend('show');
