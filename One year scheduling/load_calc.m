@@ -1,6 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This function requires
-% 1. Load at the substation (1440*72) -> 2min_data(720)*ESS#(2) = 1440, 72 = days
+% 1. Load at the substation. Data size is (1440*72). Data is composed of 2min_data(720)*ESS#(2) = 1440, 72 = days
 % 2. Each ESS schedule for 24 hours (number of ESS*24hours)
 % This function returns
 % 1. Power flow including ESS operations at the substation, the right side of ESS#1, the left side of ESS#2, and the ESS#2

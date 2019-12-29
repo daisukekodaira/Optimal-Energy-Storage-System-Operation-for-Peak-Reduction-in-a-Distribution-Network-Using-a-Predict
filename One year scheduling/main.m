@@ -40,7 +40,7 @@ for day = 1:g_days
     if day == 1
         g_SocDayStart = g_initial_SOC;
     else
-        g_SocDayStart = SOC_kwh(end,:);
+        g_SocDayStart = SOC_kwh(day-1).data(end,:);
     end
     
     %% Calculate ESS schedule
@@ -77,17 +77,17 @@ for day = 1:g_days
     %% Calculate SOC
     % Set the Initial SOC in a day
     if day ==1
-        SOC_kwh = g_initial_SOC;    % SOC [kwh]
+        SOC_kwh(day).data = g_initial_SOC;    % SOC [kwh]
     else
-        SOC_kwh = SOC_rate(day-1).data(end,:)/100.*g_ESS_capacity;  % SOC [kwh]
+        SOC_kwh(day).data = SOC_rate(day-1).data(end,:)/100.*g_ESS_capacity;  % SOC [kwh]
     end
     % Calculate SOC transition for the day based on the optimized ESS operation
     for i = 1:g_num_ESS
         ESS_schedule(day).data(:,i) = transpose(repelem(out_reshape(i,:),4));
         for j = 1:24*4
-            SOC_kwh(j+1,i) = SOC_kwh(j,i) + ESS_schedule(day).data(j,i).*0.25;   % optimized_ESS: "+" means charge,  "-" means discharge
+            SOC_kwh(day).data(j+1,i) = SOC_kwh(day).data(j,i) + ESS_schedule(day).data(j,i).*0.25;   % optimized_ESS: "+" means charge,  "-" means discharge
         end
-        SOC_rate(day).data(:,i) = transpose(100*SOC_kwh(:,i)./g_ESS_capacity(i));    % transform SOC[kwh] to SOC[%]
+        SOC_rate(day).data(:,i) = transpose(100*SOC_kwh(day).data(:,i)./g_ESS_capacity(i));    % transform SOC[kwh] to SOC[%]
     end
     
     %% Calculate Peak reduction in the day
@@ -105,7 +105,6 @@ toc;
 
 %% Graph description
 % ---------------------------------------------------------------------------------------
-% Figure1: Result of optimized load
 % Contents;
 %   01. Predicted load: mean load of each time step 
 %   02. Optimized load (test load data + ESS operation) (probabilistic)
@@ -117,11 +116,20 @@ toc;
 %   08. Adjusted Confidence range (training data + ess operation)_before
 %   09. Adjusted range (training data + ess operation)_after
 %   10. Heatmap
+% Note:
+%   y.data: The data to be described
+%   y.legend: The legend for the line
+%   y.color: The line color
+%   y.axis: Indicates the primary or secondary y-axis to be applied  
+%   y.linestyle: line style such as 'o', '-'
+%   y.descrp: There are two figures to be shown. y.descrp indicates the
+%                 line will show up in which figure. For example, y.descrp = [1 0] means 
+%                 the line show up only in the first figure (which shows forecasted information)
 % ---------------------------------------------------------------------------------------
 
 % Select which area in the line is needed to be shown as graph?
 line_area = [1 0 0 0 0]; % Ex) [1 1 0] = [ture ture false].....Area 1 and 2 will be shown as graph
-name = {'Substation', 'ESS#1 left', 'ESS#1 right', 'ESS#2 left', 'ESS#2 right'}; % name of the area
+legend = {'Substation', 'ESS#1 left', 'ESS#1 right', 'ESS#2 left', 'ESS#2 right'}; % legend of the area
 day =1; % chose arbitral day in the input data
 sigma=2; % 2sigma=95% boundaries for Prediction Interval
 
@@ -130,24 +138,27 @@ for area = 1:g_num_ESS+3
     % Check the flags to display the graph for each area
     if line_area(area) == 1 % 1 means ture
         % 01. Predicted load (forecasted load data)
-        y(1).data = rawPredLoad(day).data(:,area);  % pick the position's load at the day
-        y(1).name = 'Deterministic forecasted load';  
+        % Note: y().data requires "97" data (not 96). In the graph, the
+        %          x-axis has 97 time instances (0:00~0:00). y().data is
+        %          composed 96+1 data 
+        y(1).data = [rawPredLoad(day).data(:,area); rawPredLoad(day+1).data(1,area)];
+        y(1).legend = 'Deterministic forecasted load';  
         y(1).color = 'm';
         y(1).yaxis = 'left';
         y(1).linestyle = '-';
-        y(1).descrp = [1 0]; % [1 0] = [ture false] for each ESS
+        y(1).descrp = [1 0]; % [1 0] = [ture false] for each figure
 
         % 02. Optimized actual load (actual load data + ESS operation)
-        y(end+1).data = adjObsrLoad(day).data(:,area); 
-        y(end).name = 'Adjusted actual load';
+        y(end+1).data = [adjObsrLoad(day).data(:,area); adjObsrLoad(day+1).data(1,area)]; 
+        y(end).legend = 'Adjusted actual load';
         y(end).color = 'g';
         y(end).yaxis = 'left';
         y(end).linestyle = '-';
         y(end).descrp = [0 1];
 
         % 03. Actual load (actual load data without ESS operation)
-        y(end+1).data = rawObsrLoad(day).data(:,area);
-        y(end).name = 'Actual load';
+        y(end+1).data = [rawObsrLoad(day).data(:,area); rawObsrLoad(day+1).data(1,area)];
+        y(end).legend = 'Actual load';
         y(end).color = 'm';
         y(end).yaxis = 'left';
         y(end).linestyle = '-';
@@ -155,7 +166,7 @@ for area = 1:g_num_ESS+3
 
         % 04. Line capacity
         y(end+1).data = g_line_capacity*ones(size(predLoad,1),1);
-        y(end).name = 'Line capacity';
+        y(end).legend = 'Line capacity';
         y(end).color = 'r';
         y(end).yaxis = 'left';
         y(end).linestyle = '-';
@@ -165,14 +176,10 @@ for area = 1:g_num_ESS+3
         % 05. SOC
         % NOTE:
         %   'SOCrate' stores 97 records per one day. The last record for each day
-        %   is the same as the first record of the next day. All the last records for 
-        %   each day is removed to avoid the duplication.
-        for i = 1:g_days
-            SOC_rate(i).data(end, :) = [];  % dupulicated records are removed
-        end
+        %   is the same as the first record of the next day. 97 records are necessary for display
         for num = 1:g_num_ESS
             y(end+1).data = SOC_rate(day).data(:,num);
-            y(end).name = (['SOC ESS#',num2str(num)]);
+            y(end).legend = (['SOC ESS#',num2str(num)]);
             y(end).color = [0 0 0+0.5*(num-1)];
             y(end).yaxis = 'right';
             y(end).linestyle = '-';
@@ -180,35 +187,35 @@ for area = 1:g_num_ESS+3
         end
 
         % 06. Probabilistic Interval before ESS operation      
-        y(end+1).data = rawUpCI(day).data(:,area);
-        y(end).name = 'Predicted PI';
+        y(end+1).data = [rawUpCI(day).data(:,area); rawUpCI(day+1).data(1,area)];
+        y(end).legend = 'Predicted PI (upper)';
         y(end).color = 'm';
         y(end).yaxis = 'left';
         y(end).linestyle = '--';
         y(end).descrp = [1 0];
-        y(end+1).data = rawLoCI(day).data(:,area); % 2min: 1*24, 30 = 720   15min:1*24,4 = 96
-        y(end).name = '~'; % 'Predicted PI';
+        y(end+1).data = [rawLoCI(day).data(:,area); rawLoCI(day).data(1,area)]; % 2min: 1*24, 30 = 720   15min:1*24,4 = 96
+        y(end).legend = 'Predicted PI (lower)';
         y(end).color = 'm';
         y(end).yaxis = 'left';
         y(end).linestyle = '--';
         y(end).descrp = [1 0];
 
         % 07. Adjusted Probabilistic Interval after operation (training data + ess operation)
-        y(end+1).data = adjUpCI(day).data(:,area); % 2min: 1*24, 30 = 720   15min:1*24,4 = 96
-        y(end).name = 'Adjusted PI';
+        y(end+1).data = [adjUpCI(day).data(:,area); adjUpCI(day+1).data(1,area)]; % 2min: 1*24, 30 = 720   15min:1*24,4 = 96
+        y(end).legend = 'Adjusted PI (upper)';
         y(end).color = 'g';
         y(end).yaxis = 'left';
         y(end).linestyle = '--';
         y(end).descrp = [1 0]; 
-        y(end+1).data = adjLoCI(day).data(:,area); % 2min: 1*24, 30 = 720   15min:1*24,4 = 96
-        y(end).name = '~';
+        y(end+1).data = [adjLoCI(day).data(:,area); adjLoCI(day+1).data(1,area)]; % 2min: 1*24, 30 = 720   15min:1*24,4 = 96
+        y(end).legend = 'Adjusted PI (lower)';  
         y(end).color = 'g';
         y(end).yaxis = 'left';
         y(end).linestyle = '--';
         y(end).descrp = [1 0]; 
 
         % Describe the graph 
-        graph_desc(y, g_ProbPredLoad, name(area));
+        graph_desc(y, g_ProbPredLoad, legend(area));
 
 %             clear y;
     end
@@ -227,18 +234,23 @@ end
 % peak_hour(2) = fix(phour(2)/4);
 % adjObserved_peak = max(max(adjObsrLoad(day).data(:,area)));  % peak among whole days
 % % Table
-% LastName = {char(strcat('Observed load (', name(position), ')')); char(strcat('Adjusted Observed load (', name(area), ')'))};
+% Lastlegend = {char(strcat('Observed load (', legend(position), ')')); char(strcat('Adjusted Observed load (', legend(area), ')'))};
 % Peak_at_Substation = [observed_peak peak_hour(1); adjObserved_peak peak_hour(2)];
-% table(Peak_at_Substation,'RowNames',LastName)
+% table(Peak_at_Substation,'Rowlegends',Lastlegend)
 %  ---------------------------------------------------------------------------------------------------------------------------------
 
 %% File output
 % Disable warning 
 warning('off', 'MATLAB:xlswrite:AddSheet');
 % Transform the data format of matrices for file output
+% NOTE:
+%   'SOCrate' stores 97 records per one day. The last record for each day
+%   is the same as the first record of the next day. All the last records for 
+%   each day is removed to avoid the duplication.
 for x = 1:g_days
     ESS1_schedule(:,x) = ESS_schedule(x).data(:,1); % ESS#1
     ESS2_schedule(:,x) = ESS_schedule(x).data(:,2); % ESS#2
+    SOC_rate(x).data(end, :) = [];  % dupulicated records are removed
     ESS1_SOC(:,x) = SOC_rate(x).data(:,1); % ESS#1
     ESS2_SOC(:,x) = SOC_rate(x).data(:,2); % ESS#2
     raw_train_load(:,x) = rawPredLoad(x).data(:,1);    % area = 1; substation
@@ -247,33 +259,33 @@ for x = 1:g_days
     adj_test_load1(:,x) = adjObsrLoad(x).data(:,1);     % area = 1; substation
 end
 % ESS power transition
-filename_w1 = 'out_ESS_inout_MW.xlsx';
-xlswrite(filename_w1, ESS1_schedule,1,'B5');        % Sheet1: Write ESS1 power transition
-xlswrite(filename_w1, ESS2_schedule,2,'B5');        % Sheet2: Write ESS2 power transition
+filelegend_w1 = 'out_ESS_inout_MW.xlsx';
+xlswrite(filelegend_w1, ESS1_schedule,1,'B5');        % Sheet1: Write ESS1 power transition
+xlswrite(filelegend_w1, ESS2_schedule,2,'B5');        % Sheet2: Write ESS2 power transition
 % ESS SOC transition
-filename_w2 = 'out_ESS_SOC.xlsx';
-xlswrite(filename_w2, ESS1_SOC,1,'B5');        % Sheet1: ESS#1
-xlswrite(filename_w2, ESS2_SOC,2,'B5');        % Sheet2: ESS#2
+filelegend_w2 = 'out_ESS_SOC.xlsx';
+xlswrite(filelegend_w2, ESS1_SOC,1,'B5');        % Sheet1: ESS#1
+xlswrite(filelegend_w2, ESS2_SOC,2,'B5');        % Sheet2: ESS#2
 % Adjusted forecasted load (forecasted load + ESS operation)
-filename_w3 = 'out_Adjusted_predicted_load.xlsx';
-xlswrite(filename_w3,raw_train_load,1,'B2');
-xlswrite(filename_w3,transpose(1:g_steps),1,'A2');      
-xlswrite(filename_w3,adj_train_load1,2,'B2');      
-xlswrite(filename_w3,transpose(1:g_steps),2,'A2');    
+filelegend_w3 = 'out_Adjusted_predicted_load.xlsx';
+xlswrite(filelegend_w3,raw_train_load,1,'B2');
+xlswrite(filelegend_w3,transpose(1:g_steps),1,'A2');      
+xlswrite(filelegend_w3,adj_train_load1,2,'B2');      
+xlswrite(filelegend_w3,transpose(1:g_steps),2,'A2');    
 % Adjusted actual load (actual load + ESS operation)
-filename_w4 = 'out_Adjusted_actual_load.xlsx';
-xlswrite(filename_w4, raw_test_load, 1, 'B2');       
-xlswrite(filename_w4, transpose(1:g_steps),1,'A2');      
-xlswrite(filename_w4, adj_test_load1,2,'B2');        
-xlswrite(filename_w4, transpose(1:g_steps),2,'A2');     
+filelegend_w4 = 'out_Adjusted_actual_load.xlsx';
+xlswrite(filelegend_w4, raw_test_load, 1, 'B2');       
+xlswrite(filelegend_w4, transpose(1:g_steps),1,'A2');      
+xlswrite(filelegend_w4, adj_test_load1,2,'B2');        
+xlswrite(filelegend_w4, transpose(1:g_steps),2,'A2');     
 % Peak reduction (Gap between actual load with ESS and without ESS)
-filename_w5 = 'out_Peak_reduction.xlsx';
-xlswrite(filename_w5, peakReduction, 1, 'A2');  % Excel sheet (+) Reduction, (-) Increase
+filelegend_w5 = 'out_Peak_reduction.xlsx';
+xlswrite(filelegend_w5, peakReduction, 1, 'A2');  % Excel sheet (+) Reduction, (-) Increase
 
 %% Figures for summary
 % Histogram for peak reduction
 figure;
-data = xlsread(filename_w5);
+data = xlsread(filelegend_w5);
 histogram(data*-1,'Normalization','probability'); % Histogram: (-) Reduction, (+) Increase
 xlabel('Peak variation [MW]');
 ylabel('Probability')

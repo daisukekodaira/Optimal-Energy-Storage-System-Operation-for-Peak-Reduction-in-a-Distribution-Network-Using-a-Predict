@@ -56,20 +56,6 @@ function [cost] = constraints(in)
     if cost ~= 0                
         return;
     end
-    
-    
-%     % 3. Switching times
-%     % detect the switching between charge and discharge
-%     for i = 1:g_s_period-1
-%         x(:,i) = (re_in(:,i).*re_in(:,i+1));
-%     end    
-%     n_switch = sum(x<0,2);
-%     for i = 1:g_num_ESS
-%         if  n_switch(i) > g_switch_limit
-%             sw_cost(i) = (10^2) + 10*(n_switch(i) - g_switch_limit);
-%         end       
-%     end
-%     cost = sum(sw_cost);
 end
 
 
