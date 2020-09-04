@@ -1,0 +1,8 @@
+        % "Extract most dangerouns time instance among all positions" + "Total criticalness at all positions"
+        if max(max(transpose(Crit(i).data))) > 10^3
+            % Evaluate SOC constraints
+            out(i) = max(max(transpose(Crit(i).data))) + sum(in(i,:).^2);
+        else
+            % Evaluate over power flow
+            out(i) = (max(max(transpose(Crit(i).data))))^2 + sum(in(i,:).^2);
+        end
