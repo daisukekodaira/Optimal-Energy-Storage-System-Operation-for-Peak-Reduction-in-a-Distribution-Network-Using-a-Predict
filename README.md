@@ -7,6 +7,6 @@ Optimal Energy Storage System Operation for Peak Reduction in a Distribution Net
 https://ieeexplore.ieee.org/abstract/document/8883183/
 
 2. PPT slides
-Slide share
+Slide share 
 https://www.slideshare.net/DaisukeKodaira/optimal-energy-storage-system-operation-for-peak-reduction
 
